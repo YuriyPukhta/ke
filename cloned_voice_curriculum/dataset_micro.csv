@@ -1,0 +1,8 @@
+text,ref_s,audio_file,model
+In,af_heart,micro_chunk_In.wav,hexgrad/Kokoro-82M
+I’ve,af_heart,micro_chunk_I’ve.wav,hexgrad/Kokoro-82M
+and,af_heart,micro_chunk_and.wav,hexgrad/Kokoro-82M
+in,af_heart,micro_chunk_in.wav,hexgrad/Kokoro-82M
+me,af_heart,micro_chunk_me.wav,hexgrad/Kokoro-82M
+my,af_heart,micro_chunk_my.wav,hexgrad/Kokoro-82M
+that,af_heart,micro_chunk_that.wav,hexgrad/Kokoro-82M

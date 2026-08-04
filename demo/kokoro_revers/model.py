@@ -161,6 +161,59 @@ class KModel(torch.nn.Module):
         audio = self.decoder(asr, F0_pred, N_pred, ref_s[:, :128]).squeeze()
         return audio, pred_dur
 
+    def forward_with_alignment(
+        self,
+        input_ids: torch.LongTensor,
+        ref_s: torch.FloatTensor,
+        alignment: torch.FloatTensor,
+        n_scale: float = 1.0,
+        f0_override: Optional[torch.Tensor] = None,
+        n_override: Optional[torch.Tensor] = None,
+    ) -> tuple[torch.FloatTensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Teacher-forced synthesis with external GT alignment (from TMA).
+
+        alignment: [1, N_tokens, T_frames] hard/soft map (StyleTTS a_gt).
+        n_scale: multiply predicted N (energy) before decoder — Exp C whisper probe.
+        f0_override / n_override: optional curves [T] or [1, T] in model units (Exp B).
+        Returns audio, F0_used, N_used, pred_dur (per-token sums).
+        Gradients flow into ref_s (encoders); KModel weights should be frozen.
+        """
+        input_lengths = torch.full(
+            (input_ids.shape[0],),
+            input_ids.shape[-1],
+            device=input_ids.device,
+            dtype=torch.long,
+        )
+        text_mask = torch.arange(input_lengths.max(), device=input_ids.device).unsqueeze(0).expand(
+            input_lengths.shape[0], -1
+        )
+        text_mask = torch.gt(text_mask + 1, input_lengths.unsqueeze(1))
+        bert_dur = self.bert(input_ids, attention_mask=(~text_mask).int())
+        d_en = self.bert_encoder(bert_dur).transpose(-1, -2)
+        s = ref_s[:, 128:]
+        d = self.predictor.text_encoder(d_en, s, input_lengths, text_mask)
+        pred_aln_trg = alignment.to(self.device)
+        if pred_aln_trg.dim() == 2:
+            pred_aln_trg = pred_aln_trg.unsqueeze(0)
+        en = d.transpose(-1, -2) @ pred_aln_trg
+        F0_pred, N_pred = self.predictor.F0Ntrain(en, s)
+        if f0_override is not None:
+            F0_pred = f0_override.to(device=F0_pred.device, dtype=F0_pred.dtype)
+            if F0_pred.dim() == 1:
+                F0_pred = F0_pred.unsqueeze(0)
+        if n_override is not None:
+            N_pred = n_override.to(device=N_pred.device, dtype=N_pred.dtype)
+            if N_pred.dim() == 1:
+                N_pred = N_pred.unsqueeze(0)
+        if n_scale != 1.0:
+            N_pred = N_pred * n_scale
+        t_en = self.text_encoder(input_ids, input_lengths, text_mask)
+        asr = t_en @ pred_aln_trg
+        audio = self.decoder(asr, F0_pred, N_pred, ref_s[:, :128]).squeeze()
+        pred_dur = pred_aln_trg.sum(dim=-1).squeeze(0)
+        return audio, F0_pred, N_pred, pred_dur
+
     def forward(
         self,
         phonemes: str,

@@ -96,7 +96,7 @@ def main():
     learning_rate = 0.05
     optimizer = torch.optim.Adam([ref_s], lr=learning_rate)
     
-    epochs = 50
+    epochs = 30
     print(f"Starting optimization for {epochs} epochs...", flush=True)
     
     for epoch in range(epochs):

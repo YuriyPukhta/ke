@@ -1,0 +1,122 @@
+<!DOCTYPE html><html><head><meta charset='utf-8'>
+<title>Kokoro F0/N vs YIN</title>
+<style>body{font-family:sans-serif;max-width:1100px;margin:1.5rem auto;line-height:1.4}audio{width:100%;margin:.15rem 0}.card{margin:1.2rem 0;padding:1rem;border:1px solid #ccc}code{background:#f4f4f4;padding:0 .25rem}table{border-collapse:collapse;font-size:13px}td,th{border:1px solid #ddd;padding:.25rem .5rem;text-align:right}th:first-child,td:first-child{text-align:left}img{max-width:100%;border:1px solid #eee;margin:.5rem 0}</style></head><body>
+<h1>Kokoro native F0/N vs librosa YIN + log-energy</h1>
+<p>Audio is synthesized with official Kokoro voices. Internal curves come from <code>F0Ntrain</code>. Library curves from YIN (Hz) + STFT log-energy on the <b>same</b> generated wav.</p><ul><li><b>raw</b> — resized only (Hz / log-E as-is)</li><li><b>naive cal</b> — global mean/std match (Pearson unchanged vs raw)</li><li><b>voiced-cal</b> — match on voiced stats; YIN-unvoiced frames forced to 0</li></ul><p>Note: Kokoro F0 is ~Hz on voiced frames but ≈0 (sometimes slightly negative) on UV. YIN invents pitch on silence → full-curve correlation looks worse than voiced-only.</p>
+<h2>Voice: af_heart</h2>
+<div class='card'>
+<h3>#0 af_heart</h3>
+<p>Hello, this is a short test of pitch and energy.</p>
+<table><tr><th>curve</th><th>corr</th><th>mean</th><th>std</th><th>notes</th></tr>
+<tr><td>Kokoro F0</td><td>—</td><td>130.02</td><td>99.62</td><td>voiced frac=0.65</td></tr>
+<tr><td>YIN raw (all frames)</td><td>0.275</td><td>190.9</td><td>85.6</td><td>Hz; unvoiced noise hurts</td></tr>
+<tr><td>YIN on Kokoro-voiced</td><td>0.485</td><td>—</td><td>—</td><td>F0_k &gt; 50</td></tr>
+<tr><td>YIN both-voiced</td><td>0.485</td><td>—</td><td>—</td><td>yin&gt;1 &amp; F0_k&gt;50</td></tr>
+<tr><td>YIN voiced-cal</td><td>0.275</td><td>198.79</td><td>41.43</td><td>voiced mean/std + zero UV</td></tr>
+<tr><td>N / log-E cal</td><td>0.971</td><td>1.91</td><td>6.27</td><td>global mean/std</td></tr>
+</table>
+<p><img src='af_heart_00_curves.png' alt='curves'></p>
+<p>1) native Kokoro <small>rms=0.0478</small></p><audio controls src='af_heart_00_native.wav'></audio>
+<p>2) override YIN+E voiced-cal (recommended) <small>rms=0.0442</small></p><audio controls src='af_heart_00_override_cal.wav'></audio>
+<p>3) override YIN+E naive mean/std (no UV zeroing) <small>rms=0.0414</small></p><audio controls src='af_heart_00_override_naive.wav'></audio>
+<p>4) override YIN+E raw Hz (no calib) <small>rms=0.0298</small></p><audio controls src='af_heart_00_override_raw.wav'></audio>
+<p>5) override F0 voiced-cal only <small>rms=0.0475</small></p><audio controls src='af_heart_00_override_f0cal.wav'></audio>
+<p>6) override N cal only <small>rms=0.0447</small></p><audio controls src='af_heart_00_override_ncal.wav'></audio>
+</div>
+<div class='card'>
+<h3>#1 af_heart</h3>
+<p>The quick brown fox jumps over the lazy dog near the river.</p>
+<table><tr><th>curve</th><th>corr</th><th>mean</th><th>std</th><th>notes</th></tr>
+<tr><td>Kokoro F0</td><td>—</td><td>135.68</td><td>96.89</td><td>voiced frac=0.69</td></tr>
+<tr><td>YIN raw (all frames)</td><td>0.441</td><td>181.6</td><td>81.1</td><td>Hz; unvoiced noise hurts</td></tr>
+<tr><td>YIN on Kokoro-voiced</td><td>0.491</td><td>—</td><td>—</td><td>F0_k &gt; 50</td></tr>
+<tr><td>YIN both-voiced</td><td>0.491</td><td>—</td><td>—</td><td>yin&gt;1 &amp; F0_k&gt;50</td></tr>
+<tr><td>YIN voiced-cal</td><td>0.441</td><td>197.17</td><td>38.34</td><td>voiced mean/std + zero UV</td></tr>
+<tr><td>N / log-E cal</td><td>0.969</td><td>2.29</td><td>5.95</td><td>global mean/std</td></tr>
+</table>
+<p><img src='af_heart_01_curves.png' alt='curves'></p>
+<p>1) native Kokoro <small>rms=0.0472</small></p><audio controls src='af_heart_01_native.wav'></audio>
+<p>2) override YIN+E voiced-cal (recommended) <small>rms=0.0455</small></p><audio controls src='af_heart_01_override_cal.wav'></audio>
+<p>3) override YIN+E naive mean/std (no UV zeroing) <small>rms=0.0418</small></p><audio controls src='af_heart_01_override_naive.wav'></audio>
+<p>4) override YIN+E raw Hz (no calib) <small>rms=0.0311</small></p><audio controls src='af_heart_01_override_raw.wav'></audio>
+<p>5) override F0 voiced-cal only <small>rms=0.0474</small></p><audio controls src='af_heart_01_override_f0cal.wav'></audio>
+<p>6) override N cal only <small>rms=0.0456</small></p><audio controls src='af_heart_01_override_ncal.wav'></audio>
+</div>
+<div class='card'>
+<h3>#2 af_heart</h3>
+<p>I would like to know whether the extracted contours match Kokoro.</p>
+<table><tr><th>curve</th><th>corr</th><th>mean</th><th>std</th><th>notes</th></tr>
+<tr><td>Kokoro F0</td><td>—</td><td>136.01</td><td>94.47</td><td>voiced frac=0.69</td></tr>
+<tr><td>YIN raw (all frames)</td><td>0.468</td><td>177.2</td><td>79.7</td><td>Hz; unvoiced noise hurts</td></tr>
+<tr><td>YIN on Kokoro-voiced</td><td>0.675</td><td>—</td><td>—</td><td>F0_k &gt; 50</td></tr>
+<tr><td>YIN both-voiced</td><td>0.675</td><td>—</td><td>—</td><td>yin&gt;1 &amp; F0_k&gt;50</td></tr>
+<tr><td>YIN voiced-cal</td><td>0.468</td><td>195.53</td><td>35.39</td><td>voiced mean/std + zero UV</td></tr>
+<tr><td>N / log-E cal</td><td>0.970</td><td>2.39</td><td>5.88</td><td>global mean/std</td></tr>
+</table>
+<p><img src='af_heart_02_curves.png' alt='curves'></p>
+<p>1) native Kokoro <small>rms=0.0472</small></p><audio controls src='af_heart_02_native.wav'></audio>
+<p>2) override YIN+E voiced-cal (recommended) <small>rms=0.0455</small></p><audio controls src='af_heart_02_override_cal.wav'></audio>
+<p>3) override YIN+E naive mean/std (no UV zeroing) <small>rms=0.0422</small></p><audio controls src='af_heart_02_override_naive.wav'></audio>
+<p>4) override YIN+E raw Hz (no calib) <small>rms=0.0312</small></p><audio controls src='af_heart_02_override_raw.wav'></audio>
+<p>5) override F0 voiced-cal only <small>rms=0.0477</small></p><audio controls src='af_heart_02_override_f0cal.wav'></audio>
+<p>6) override N cal only <small>rms=0.0452</small></p><audio controls src='af_heart_02_override_ncal.wav'></audio>
+</div>
+<h2>Voice: am_michael</h2>
+<div class='card'>
+<h3>#0 am_michael</h3>
+<p>Hello, this is a short test of pitch and energy.</p>
+<table><tr><th>curve</th><th>corr</th><th>mean</th><th>std</th><th>notes</th></tr>
+<tr><td>Kokoro F0</td><td>—</td><td>69.79</td><td>57.54</td><td>voiced frac=0.61</td></tr>
+<tr><td>YIN raw (all frames)</td><td>-0.199</td><td>134.7</td><td>87.1</td><td>Hz; unvoiced noise hurts</td></tr>
+<tr><td>YIN on Kokoro-voiced</td><td>0.658</td><td>—</td><td>—</td><td>F0_k &gt; 50</td></tr>
+<tr><td>YIN both-voiced</td><td>0.658</td><td>—</td><td>—</td><td>yin&gt;1 &amp; F0_k&gt;50</td></tr>
+<tr><td>YIN voiced-cal</td><td>-0.199</td><td>112.91</td><td>22.96</td><td>voiced mean/std + zero UV</td></tr>
+<tr><td>N / log-E cal</td><td>0.968</td><td>1.63</td><td>5.92</td><td>global mean/std</td></tr>
+</table>
+<p><img src='am_michael_00_curves.png' alt='curves'></p>
+<p>1) native Kokoro <small>rms=0.0427</small></p><audio controls src='am_michael_00_native.wav'></audio>
+<p>2) override YIN+E voiced-cal (recommended) <small>rms=0.0371</small></p><audio controls src='am_michael_00_override_cal.wav'></audio>
+<p>3) override YIN+E naive mean/std (no UV zeroing) <small>rms=0.0312</small></p><audio controls src='am_michael_00_override_naive.wav'></audio>
+<p>4) override YIN+E raw Hz (no calib) <small>rms=0.0269</small></p><audio controls src='am_michael_00_override_raw.wav'></audio>
+<p>5) override F0 voiced-cal only <small>rms=0.0393</small></p><audio controls src='am_michael_00_override_f0cal.wav'></audio>
+<p>6) override N cal only <small>rms=0.0401</small></p><audio controls src='am_michael_00_override_ncal.wav'></audio>
+</div>
+<div class='card'>
+<h3>#1 am_michael</h3>
+<p>The quick brown fox jumps over the lazy dog near the river.</p>
+<table><tr><th>curve</th><th>corr</th><th>mean</th><th>std</th><th>notes</th></tr>
+<tr><td>Kokoro F0</td><td>—</td><td>73.68</td><td>55.36</td><td>voiced frac=0.66</td></tr>
+<tr><td>YIN raw (all frames)</td><td>-0.058</td><td>128.3</td><td>83.6</td><td>Hz; unvoiced noise hurts</td></tr>
+<tr><td>YIN on Kokoro-voiced</td><td>0.035</td><td>—</td><td>—</td><td>F0_k &gt; 50</td></tr>
+<tr><td>YIN both-voiced</td><td>0.035</td><td>—</td><td>—</td><td>yin&gt;1 &amp; F0_k&gt;50</td></tr>
+<tr><td>YIN voiced-cal</td><td>-0.058</td><td>110.98</td><td>23.57</td><td>voiced mean/std + zero UV</td></tr>
+<tr><td>N / log-E cal</td><td>0.964</td><td>2.06</td><td>5.48</td><td>global mean/std</td></tr>
+</table>
+<p><img src='am_michael_01_curves.png' alt='curves'></p>
+<p>1) native Kokoro <small>rms=0.0414</small></p><audio controls src='am_michael_01_native.wav'></audio>
+<p>2) override YIN+E voiced-cal (recommended) <small>rms=0.0385</small></p><audio controls src='am_michael_01_override_cal.wav'></audio>
+<p>3) override YIN+E naive mean/std (no UV zeroing) <small>rms=0.0328</small></p><audio controls src='am_michael_01_override_naive.wav'></audio>
+<p>4) override YIN+E raw Hz (no calib) <small>rms=0.0274</small></p><audio controls src='am_michael_01_override_raw.wav'></audio>
+<p>5) override F0 voiced-cal only <small>rms=0.0389</small></p><audio controls src='am_michael_01_override_f0cal.wav'></audio>
+<p>6) override N cal only <small>rms=0.0408</small></p><audio controls src='am_michael_01_override_ncal.wav'></audio>
+</div>
+<div class='card'>
+<h3>#2 am_michael</h3>
+<p>I would like to know whether the extracted contours match Kokoro.</p>
+<table><tr><th>curve</th><th>corr</th><th>mean</th><th>std</th><th>notes</th></tr>
+<tr><td>Kokoro F0</td><td>—</td><td>73.73</td><td>55.60</td><td>voiced frac=0.65</td></tr>
+<tr><td>YIN raw (all frames)</td><td>-0.217</td><td>144.3</td><td>97.0</td><td>Hz; unvoiced noise hurts</td></tr>
+<tr><td>YIN on Kokoro-voiced</td><td>0.180</td><td>—</td><td>—</td><td>F0_k &gt; 50</td></tr>
+<tr><td>YIN both-voiced</td><td>0.180</td><td>—</td><td>—</td><td>yin&gt;1 &amp; F0_k&gt;50</td></tr>
+<tr><td>YIN voiced-cal</td><td>-0.217</td><td>112.24</td><td>21.62</td><td>voiced mean/std + zero UV</td></tr>
+<tr><td>N / log-E cal</td><td>0.962</td><td>2.05</td><td>5.51</td><td>global mean/std</td></tr>
+</table>
+<p><img src='am_michael_02_curves.png' alt='curves'></p>
+<p>1) native Kokoro <small>rms=0.0392</small></p><audio controls src='am_michael_02_native.wav'></audio>
+<p>2) override YIN+E voiced-cal (recommended) <small>rms=0.0358</small></p><audio controls src='am_michael_02_override_cal.wav'></audio>
+<p>3) override YIN+E naive mean/std (no UV zeroing) <small>rms=0.0295</small></p><audio controls src='am_michael_02_override_naive.wav'></audio>
+<p>4) override YIN+E raw Hz (no calib) <small>rms=0.0251</small></p><audio controls src='am_michael_02_override_raw.wav'></audio>
+<p>5) override F0 voiced-cal only <small>rms=0.0372</small></p><audio controls src='am_michael_02_override_f0cal.wav'></audio>
+<p>6) override N cal only <small>rms=0.0378</small></p><audio controls src='am_michael_02_override_ncal.wav'></audio>
+</div>
+</body></html>

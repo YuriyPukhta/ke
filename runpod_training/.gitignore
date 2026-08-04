@@ -1,0 +1,5 @@
+# Local QC output (optional)
+_test_indexes/
+__pycache__/
+**/__pycache__/
+*.pyc
