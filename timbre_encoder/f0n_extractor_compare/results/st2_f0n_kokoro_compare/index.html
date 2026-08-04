@@ -1,0 +1,104 @@
+<!DOCTYPE html><html><head><meta charset='utf-8'>
+<title>Kokoro F0/N vs ST2 extractors</title>
+<style>body{font-family:sans-serif;max-width:1100px;margin:1.5rem auto;line-height:1.4}audio{width:100%;margin:.15rem 0}.card{margin:1.2rem 0;padding:1rem;border:1px solid #ccc}code{background:#f4f4f4;padding:0 .25rem}table{border-collapse:collapse;font-size:13px}td,th{border:1px solid #ddd;padding:.25rem .5rem;text-align:right}th:first-child,td:first-child{text-align:left}img{max-width:100%;border:1px solid #eee;margin:.5rem 0}</style></head><body>
+<h1>Kokoro native F0/N vs StyleTTS2 extractors</h1>
+<p><b>F0</b> = JDCNet <code>pitch_extractor(mel)</code>; <b>N</b> = <code>log_norm(mel)</code>. Same Kokoro-generated wav as source. YIN corr shown for comparison (no YIN override audio here).</p><ul><li><b>ST2 raw</b> — resize only</li><li><b>ST2 cal</b> — F0 voiced mean/std + UV→0; N global mean/std</li></ul>
+<h2>Voice: af_heart</h2>
+<div class='card'>
+<h3>#0 af_heart</h3><p>Hello, this is a short test of pitch and energy.</p>
+<table><tr><th>curve</th><th>corr</th><th>mean</th><th>std</th></tr>
+<tr><td>Kokoro F0</td><td>—</td><td>130.02</td><td>99.62</td></tr>
+<tr><td>ST2 F0 (all)</td><td>0.929</td><td>169.33</td><td>124.62</td></tr>
+<tr><td>ST2 F0 on Kokoro-voiced</td><td><b>0.824</b></td><td>—</td><td>—</td></tr>
+<tr><td>YIN F0 on Kokoro-voiced</td><td>0.596</td><td>—</td><td>—</td></tr>
+<tr><td>ST2 N / log_norm</td><td><b>0.995</b></td><td>1.39</td><td>6.16</td></tr>
+</table>
+<p><img src='af_heart_00_curves.png'></p>
+<p>1) native Kokoro <small>rms=0.0477</small></p><audio controls src='af_heart_00_native.wav'></audio>
+<p>2) ST2 F0+N calibrated <small>rms=0.0488</small></p><audio controls src='af_heart_00_override_cal.wav'></audio>
+<p>3) ST2 F0+N raw <small>rms=0.0461</small></p><audio controls src='af_heart_00_override_raw.wav'></audio>
+<p>4) ST2 F0 cal only <small>rms=0.0479</small></p><audio controls src='af_heart_00_override_f0cal.wav'></audio>
+<p>5) ST2 N cal only <small>rms=0.0486</small></p><audio controls src='af_heart_00_override_ncal.wav'></audio>
+</div>
+<div class='card'>
+<h3>#1 af_heart</h3><p>The quick brown fox jumps over the lazy dog near the river.</p>
+<table><tr><th>curve</th><th>corr</th><th>mean</th><th>std</th></tr>
+<tr><td>Kokoro F0</td><td>—</td><td>135.68</td><td>96.89</td></tr>
+<tr><td>ST2 F0 (all)</td><td>0.964</td><td>168.98</td><td>122.93</td></tr>
+<tr><td>ST2 F0 on Kokoro-voiced</td><td><b>0.770</b></td><td>—</td><td>—</td></tr>
+<tr><td>YIN F0 on Kokoro-voiced</td><td>0.505</td><td>—</td><td>—</td></tr>
+<tr><td>ST2 N / log_norm</td><td><b>0.995</b></td><td>1.88</td><td>6.00</td></tr>
+</table>
+<p><img src='af_heart_01_curves.png'></p>
+<p>1) native Kokoro <small>rms=0.0473</small></p><audio controls src='af_heart_01_native.wav'></audio>
+<p>2) ST2 F0+N calibrated <small>rms=0.0479</small></p><audio controls src='af_heart_01_override_cal.wav'></audio>
+<p>3) ST2 F0+N raw <small>rms=0.0483</small></p><audio controls src='af_heart_01_override_raw.wav'></audio>
+<p>4) ST2 F0 cal only <small>rms=0.0476</small></p><audio controls src='af_heart_01_override_f0cal.wav'></audio>
+<p>5) ST2 N cal only <small>rms=0.0477</small></p><audio controls src='af_heart_01_override_ncal.wav'></audio>
+</div>
+<div class='card'>
+<h3>#2 af_heart</h3><p>I would like to know whether the extracted contours match Kokoro.</p>
+<table><tr><th>curve</th><th>corr</th><th>mean</th><th>std</th></tr>
+<tr><td>Kokoro F0</td><td>—</td><td>136.01</td><td>94.47</td></tr>
+<tr><td>ST2 F0 (all)</td><td>0.968</td><td>175.09</td><td>119.48</td></tr>
+<tr><td>ST2 F0 on Kokoro-voiced</td><td><b>0.894</b></td><td>—</td><td>—</td></tr>
+<tr><td>YIN F0 on Kokoro-voiced</td><td>0.708</td><td>—</td><td>—</td></tr>
+<tr><td>ST2 N / log_norm</td><td><b>0.993</b></td><td>1.91</td><td>5.97</td></tr>
+</table>
+<p><img src='af_heart_02_curves.png'></p>
+<p>1) native Kokoro <small>rms=0.0472</small></p><audio controls src='af_heart_02_native.wav'></audio>
+<p>2) ST2 F0+N calibrated <small>rms=0.0480</small></p><audio controls src='af_heart_02_override_cal.wav'></audio>
+<p>3) ST2 F0+N raw <small>rms=0.0481</small></p><audio controls src='af_heart_02_override_raw.wav'></audio>
+<p>4) ST2 F0 cal only <small>rms=0.0475</small></p><audio controls src='af_heart_02_override_f0cal.wav'></audio>
+<p>5) ST2 N cal only <small>rms=0.0476</small></p><audio controls src='af_heart_02_override_ncal.wav'></audio>
+</div>
+<h2>Voice: am_michael</h2>
+<div class='card'>
+<h3>#0 am_michael</h3><p>Hello, this is a short test of pitch and energy.</p>
+<table><tr><th>curve</th><th>corr</th><th>mean</th><th>std</th></tr>
+<tr><td>Kokoro F0</td><td>—</td><td>69.79</td><td>57.54</td></tr>
+<tr><td>ST2 F0 (all)</td><td>0.952</td><td>90.04</td><td>72.63</td></tr>
+<tr><td>ST2 F0 on Kokoro-voiced</td><td><b>0.774</b></td><td>—</td><td>—</td></tr>
+<tr><td>YIN F0 on Kokoro-voiced</td><td>0.622</td><td>—</td><td>—</td></tr>
+<tr><td>ST2 N / log_norm</td><td><b>0.994</b></td><td>1.24</td><td>5.89</td></tr>
+</table>
+<p><img src='am_michael_00_curves.png'></p>
+<p>1) native Kokoro <small>rms=0.0427</small></p><audio controls src='am_michael_00_native.wav'></audio>
+<p>2) ST2 F0+N calibrated <small>rms=0.0435</small></p><audio controls src='am_michael_00_override_cal.wav'></audio>
+<p>3) ST2 F0+N raw <small>rms=0.0455</small></p><audio controls src='am_michael_00_override_raw.wav'></audio>
+<p>4) ST2 F0 cal only <small>rms=0.0429</small></p><audio controls src='am_michael_00_override_f0cal.wav'></audio>
+<p>5) ST2 N cal only <small>rms=0.0436</small></p><audio controls src='am_michael_00_override_ncal.wav'></audio>
+</div>
+<div class='card'>
+<h3>#1 am_michael</h3><p>The quick brown fox jumps over the lazy dog near the river.</p>
+<table><tr><th>curve</th><th>corr</th><th>mean</th><th>std</th></tr>
+<tr><td>Kokoro F0</td><td>—</td><td>73.68</td><td>55.36</td></tr>
+<tr><td>ST2 F0 (all)</td><td>0.912</td><td>93.34</td><td>68.92</td></tr>
+<tr><td>ST2 F0 on Kokoro-voiced</td><td><b>0.654</b></td><td>—</td><td>—</td></tr>
+<tr><td>YIN F0 on Kokoro-voiced</td><td>0.035</td><td>—</td><td>—</td></tr>
+<tr><td>ST2 N / log_norm</td><td><b>0.990</b></td><td>1.62</td><td>5.67</td></tr>
+</table>
+<p><img src='am_michael_01_curves.png'></p>
+<p>1) native Kokoro <small>rms=0.0412</small></p><audio controls src='am_michael_01_native.wav'></audio>
+<p>2) ST2 F0+N calibrated <small>rms=0.0422</small></p><audio controls src='am_michael_01_override_cal.wav'></audio>
+<p>3) ST2 F0+N raw <small>rms=0.0450</small></p><audio controls src='am_michael_01_override_raw.wav'></audio>
+<p>4) ST2 F0 cal only <small>rms=0.0414</small></p><audio controls src='am_michael_01_override_f0cal.wav'></audio>
+<p>5) ST2 N cal only <small>rms=0.0420</small></p><audio controls src='am_michael_01_override_ncal.wav'></audio>
+</div>
+<div class='card'>
+<h3>#2 am_michael</h3><p>I would like to know whether the extracted contours match Kokoro.</p>
+<table><tr><th>curve</th><th>corr</th><th>mean</th><th>std</th></tr>
+<tr><td>Kokoro F0</td><td>—</td><td>73.73</td><td>55.60</td></tr>
+<tr><td>ST2 F0 (all)</td><td>0.942</td><td>88.42</td><td>72.37</td></tr>
+<tr><td>ST2 F0 on Kokoro-voiced</td><td><b>0.723</b></td><td>—</td><td>—</td></tr>
+<tr><td>YIN F0 on Kokoro-voiced</td><td>0.017</td><td>—</td><td>—</td></tr>
+<tr><td>ST2 N / log_norm</td><td><b>0.992</b></td><td>1.64</td><td>5.64</td></tr>
+</table>
+<p><img src='am_michael_02_curves.png'></p>
+<p>1) native Kokoro <small>rms=0.0392</small></p><audio controls src='am_michael_02_native.wav'></audio>
+<p>2) ST2 F0+N calibrated <small>rms=0.0391</small></p><audio controls src='am_michael_02_override_cal.wav'></audio>
+<p>3) ST2 F0+N raw <small>rms=0.0408</small></p><audio controls src='am_michael_02_override_raw.wav'></audio>
+<p>4) ST2 F0 cal only <small>rms=0.0389</small></p><audio controls src='am_michael_02_override_f0cal.wav'></audio>
+<p>5) ST2 N cal only <small>rms=0.0394</small></p><audio controls src='am_michael_02_override_ncal.wav'></audio>
+</div>
+</body></html>

@@ -169,3 +169,70 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Local datasets / encoder checkpoints (large)
+dataset/LibriTTS_R/
+dataset/*.tar.gz
+models/
+kokoro_targets_v1/
+kokoro_targets_v1_partial.tar.gz
+timbre_encoder/checkpoints/
+timbre_encoder/runs/
+timbre_encoder/manifests/
+gt_cache/features/
+kokoro_targets_v1/
+kokoro_targets_v1_partial.tar.gz
+gt_cache/jdc_finetune/data/
+gt_cache/jdc_finetune/checkpoints/
+gt_cache/jdc_finetune/results/
+gt_cache/tma_finetune/data/
+gt_cache/tma_finetune/checkpoints/
+gt_cache/tma_finetune/results/
+timbre_encoder/f0n_cache/features/
+timbre_encoder/f0n_cache/
+timbre_encoder/kokoro_embed_train/results/
+.venv2/
+
+# Secrets / credentials (never commit)
+.keys/
+*.pem
+
+# Large local bundles / scratch audio
+*.tar
+output.wav
+
+# Nested third-party clones (separate repos)
+rvc/
+third_party/*
+!third_party/__init__.py
+!third_party/monotonic_align/
+!third_party/styletts2_asr/
+!third_party/styletts2_meldataset.py
+fabul8_repro/_src/
+
+# Experiment caches, runs, dumps
+gt_cache/mfa/
+gt_cache/results/
+gt_cache/logs/
+gt_cache/*.jsonl
+gt_cache/*.jsonl.gz
+gt_cache/*.npz
+runpod_training/payload/
+speaker_ref_opt/runs/
+prosody_steer/runs/
+fabul8_repro/outputs/
+fabul8_repro/voices/
+timbre_encoder/**/*.wav
+timbre_encoder/**/*.png
+timbre_encoder/**/*.npz
+cloned_voice_*/chunks/
+cloned_voice_*/result/
+cloned_voice_*/**/*.wav
+cloned_voice_*/**/*.pt
+RUNPOD/
+voice_analysis/
+weights/
+звіт/
+.agents/
+AGENTS.md
+*.pt

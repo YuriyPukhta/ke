@@ -1,0 +1,20 @@
+{
+  "accepted": {
+    "dev": 3608,
+    "train": 19718
+  },
+  "rejected": {
+    "align_score": 133,
+    "align_status": 35
+  },
+  "schema": "kokoro_runpod_audit_v1",
+  "settings": {
+    "max_phonemes": 510,
+    "min_align_score": 0.25,
+    "phoneme_remaps": false
+  },
+  "speakers": {
+    "dev": 40,
+    "train": 239
+  }
+}

@@ -1,0 +1,159 @@
+# Kokoro-82M LibriTTS_R fine-tune on RunPod A40 48GB
+# All runnable code lives in runpod_training/; third_party is read-only.
+
+run_root: "/workspace/kokoro-run"
+seed: 42
+batch_size: 12
+grad_accum: 2
+max_len: 300
+log_interval: 50
+keep_last: 3
+wandb: true
+bf16: true
+
+pretrained_model: "/workspace/kokoro-run/weights/kokoro_base.pth"
+first_stage_path: "/workspace/kokoro-run/checkpoints/stage1/first_stage.pth"
+
+# Utility models (resolved relative to third_party/StyleTTS2 if not absolute)
+F0_path: "Utils/JDC/bst.t7"
+ASR_config: "Utils/ASR/config.yml"
+ASR_path: "Utils/ASR/epoch_00080.pth"
+PLBERT_dir: "Utils/PLBERT/"
+
+style_init:
+  # Multi-speaker Stage 1 for shared trunk only; unshared re-inited
+  styletts2_stage1_checkpoint: "/workspace/kokoro-run/weights/kokoro_deutsch_hui_base.pth"
+  reinit_unshared: true
+
+data_params:
+  # WAV only (not shipped in runpod_training/payload)
+  root_path: "/workspace/data/LibriTTS_R"
+  # NPZ + indexes ship inside runpod_training/payload
+  targets_root: "/workspace/kokoro/runpod_training/payload/kokoro_targets_v1"
+  train_index: "/workspace/kokoro/runpod_training/payload/indexes/train.jsonl"
+  val_index: "/workspace/kokoro/runpod_training/payload/indexes/dev.jsonl"
+  OOD_data: "/workspace/kokoro/runpod_training/payload/indexes/OOD_texts.txt"
+  num_workers: 8
+  use_cached_f0n: false
+  min_length: 50
+
+preprocess_params:
+  sr: 24000
+  spect_params:
+    n_fft: 2048
+    win_length: 1200
+    hop_length: 300
+    n_mels: 80
+    fmin: 0
+    fmax: 8000
+
+model_params:
+  dim_in: 64
+  n_token: 178
+  hidden_dim: 512
+  style_dim: 128
+  max_dur: 50
+  multispeaker: true
+  n_mels: 80
+  dropout: 0.2
+  n_layer: 3
+  text_encoder_kernel_size: 5
+  decoder:
+    type: istftnet
+    upsample_rates: [10, 6]
+    upsample_kernel_sizes: [20, 12]
+    upsample_initial_channel: 512
+    resblock_kernel_sizes: [3, 7, 11]
+    resblock_dilation_sizes: [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
+    gen_istft_n_fft: 20
+    gen_istft_hop_size: 5
+  diffusion:
+    embedding_mask_proba: 0.1
+    transformer:
+      num_layers: 3
+      num_heads: 8
+      head_features: 64
+      multiplier: 2
+    dist:
+      sigma_data: 0.2
+      estimate_sigma_data: true
+      mean: -3.0
+      std: 1.0
+  plbert:
+    hidden_size: 768
+    num_attention_heads: 12
+    intermediate_size: 2048
+    max_position_embeddings: 512
+    num_hidden_layers: 12
+    dropout: 0.1
+  slm:
+    model: "microsoft/wavlm-base-plus"
+    sr: 16000
+    hidden: 768
+    nlayers: 13
+    initial_channel: 64
+
+loss_params:
+  lambda_gen: 1.0
+  lambda_mel: 5.0
+  lambda_dur: 1.0
+  lambda_ce: 20.0
+  lambda_F0: 1.0
+  lambda_norm: 1.0
+  lambda_s2s: 1.0
+  lambda_mono: 1.0
+  lambda_slm: 1.0
+  lambda_diff: 0.0
+  lambda_sty: 0.0
+  TMA_epoch: 0
+  diff_epoch: 999
+  joint_epoch: 2
+
+stage1:
+  warmup_epochs: 1
+  warmup_epochs_max: 2
+  acoustic_epochs: 9
+  warmup_ratio: 0.05
+  align_mono_gate: 2.0
+  val_batches: 20
+  lrs:
+    warmup:
+      default: 2.0e-5
+      text_aligner: 2.0e-4
+    acoustic:
+      default: 1.0e-4
+      text_aligner: 5.0e-5
+      text_encoder: 1.0e-5
+      style_encoder: 2.0e-5
+      decoder: 2.0e-5
+      mpd: 1.0e-4
+      msd: 1.0e-4
+
+stage2:
+  epochs: 10
+  warmup_ratio: 0.05
+  lrs:
+    pre_joint:
+      default: 2.0e-5
+      bert_encoder: 5.0e-6
+      predictor: 2.0e-5
+      predictor_encoder: 1.0e-4
+    joint:
+      default: 1.0e-4
+      bert_encoder: 5.0e-6
+      predictor: 2.0e-5
+      predictor_encoder: 1.0e-4
+      style_encoder: 1.0e-5
+      decoder: 1.0e-5
+      mpd: 1.0e-4
+      msd: 1.0e-4
+      wd: 1.0e-4
+
+slmadv_params:
+  min_len: 100
+  max_len: 500
+  batch_percentage: 0.5
+  iter: 10
+  thresh: 5
+  scale: 0.01
+  sig: 1.5
