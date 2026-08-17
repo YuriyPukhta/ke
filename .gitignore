@@ -228,3 +228,6 @@ cloned_voice_*/chunks/
 cloned_voice_*/result/
 cloned_voice_*/**/*.wav
 cloned_voice_*/**/*.pt
+RUNPOD/
+voice_analysis/
+weights/
