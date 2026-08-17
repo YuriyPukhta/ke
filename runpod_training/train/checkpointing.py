@@ -90,12 +90,18 @@ def load_checkpoint(
     load_optimizer: bool = True,
     ignore_modules: list[str] | None = None,
 ) -> tuple[int, int, dict[str, Any]]:
+    from runpod_training.train.style_init import _convert_spectral_norm_keys
+
     ignore = set(ignore_modules or [])
     state = torch.load(path, map_location="cpu", weights_only=False)
     params = state.get("net", state)
     for key in model:
         if key in params and key not in ignore:
-            missing, unexpected = model[key].load_state_dict(params[key], strict=False)
+            payload = params[key]
+            # style/predictor encoders may use legacy spectral_norm key names
+            if key in ("style_encoder", "predictor_encoder"):
+                payload = _convert_spectral_norm_keys(payload)
+            missing, unexpected = model[key].load_state_dict(payload, strict=False)
             print(f"{key} loaded (missing={len(missing)} unexpected={len(unexpected)})")
     epoch = int(state.get("epoch", 0))
     iters = int(state.get("iters", 0))
