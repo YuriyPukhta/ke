@@ -232,3 +232,6 @@ RUNPOD/
 voice_analysis/
 weights/
 звіт/
+.agents/
+AGENTS.md
+*.pt
