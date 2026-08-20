@@ -22,9 +22,7 @@ Expected accepted count ≈ 23 459 after QC.
 ```text
 /workspace/kokoro-run/
   checkpoints/{stage1,stage2}/   # latest, best_*, epoch_*, first_stage.pth, final.pth
-  logs/tensorboard/{stage1,stage2}/
-  logs/console/                  # stage*.log, launch tee, tensorboard.log
-  logs/wandb/                    # local W&B dir when API key set
+  logs/tensorboard/
   metrics/{stage1,stage2}_*.jsonl, summary.json
   samples/
   exports/{kmodel,voicepacks}/
@@ -32,12 +30,9 @@ Expected accepted count ≈ 23 459 after QC.
   weights/kokoro_base.pth, config.json
   configs/runtime.yml
   state/latest.json, latest_stage1.json, latest_stage2.json, preflight.json
-  cache/{huggingface,torch,xdg}/ # HF/torch hubs (not container disk)
 ```
 
 Checkpoints are written atomically (`.tmp` → rename). Retention keeps latest/best + last 3 epoch files.
-
-**Pod recreate:** see repo-root [`POD_RESTORE.md`](../POD_RESTORE.md) and `bash runpod_training/scripts/restore_pod.sh`.
 
 ## Initialization
 

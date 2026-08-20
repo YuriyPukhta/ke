@@ -42,9 +42,7 @@ runpod_training/
   docs/RUNPOD.md
 ```
 
-Volume artifacts: `/workspace/kokoro-run/{checkpoints,logs,metrics,samples,exports,state,cache}`.
-
-Pod recreate from volume: see [`../POD_RESTORE.md`](../POD_RESTORE.md).
+Volume artifacts: `/workspace/kokoro-run/{checkpoints,logs,metrics,samples,exports,state}`.
 
 ## Docs
 

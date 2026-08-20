@@ -107,7 +107,7 @@ loss_params:
   lambda_sty: 0.0
   TMA_epoch: 0
   diff_epoch: 999
-  joint_epoch: 3
+  joint_epoch: 2
 
 stage1:
   warmup_epochs: 1

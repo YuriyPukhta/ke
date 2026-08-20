@@ -33,7 +33,6 @@ def volume_layout(run_root: Path | None = None) -> dict[str, Path]:
         "stage1": root / "checkpoints" / "stage1",
         "stage2": root / "checkpoints" / "stage2",
         "logs": root / "logs" / "tensorboard",
-        "console": root / "logs" / "console",
         "metrics": root / "metrics",
         "samples": root / "samples",
         "exports": root / "exports",
@@ -43,7 +42,6 @@ def volume_layout(run_root: Path | None = None) -> dict[str, Path]:
         "state": root / "state",
         "indexes": root / "indexes",
         "weights": root / "weights",
-        "cache": root / "cache",
     }
     return layout
 

@@ -14,11 +14,54 @@ import torch
 logger = logging.getLogger(__name__)
 
 
-def _atomic_torch_save(obj: Any, path: Path) -> None:
+def _atomic_torch_save(obj: Any, path: Path, retries: int = 3) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    torch.save(obj, tmp)
-    tmp.replace(path)
+    last_exc: Exception | None = None
+    for attempt in range(retries):
+        try:
+            torch.save(obj, tmp)
+            tmp.replace(path)
+            return
+        except OSError as exc:
+            last_exc = exc
+            logger.warning("checkpoint write failed (%s) attempt %s/%s: %s", path, attempt + 1, retries, exc)
+            try:
+                if tmp.exists():
+                    tmp.unlink()
+            except OSError:
+                pass
+            import time
+
+            time.sleep(0.5 * (attempt + 1))
+    raise OSError(f"checkpoint write failed for {path}: {last_exc}") from last_exc
+
+
+def save_checkpoint_resilient(
+    path: Path,
+    model: dict,
+    optimizer: Any | None,
+    schedulers: dict | None,
+    epoch: int,
+    iters: int,
+    phase: str,
+    metrics: dict[str, float] | None = None,
+    extra: dict[str, Any] | None = None,
+    mirror: Path | None = None,
+) -> Path | None:
+    """Save to ``path``; on volume I/O failure still try ``mirror`` (e.g. /dev/shm)."""
+    try:
+        return save_checkpoint(path, model, optimizer, schedulers, epoch, iters, phase, metrics, extra)
+    except OSError as exc:
+        logger.error("primary checkpoint save failed (%s): %s", path, exc)
+        if mirror is not None:
+            try:
+                out = save_checkpoint(mirror, model, optimizer, schedulers, epoch, iters, phase, metrics, extra)
+                logger.warning("saved mirror checkpoint instead: %s", out)
+                return out
+            except OSError as exc2:
+                logger.error("mirror checkpoint save also failed: %s", exc2)
+        return None
 
 
 def _atomic_json(obj: Any, path: Path) -> None:
@@ -90,18 +133,12 @@ def load_checkpoint(
     load_optimizer: bool = True,
     ignore_modules: list[str] | None = None,
 ) -> tuple[int, int, dict[str, Any]]:
-    from runpod_training.train.style_init import _convert_spectral_norm_keys
-
     ignore = set(ignore_modules or [])
     state = torch.load(path, map_location="cpu", weights_only=False)
     params = state.get("net", state)
     for key in model:
         if key in params and key not in ignore:
-            payload = params[key]
-            # style/predictor encoders may use legacy spectral_norm key names
-            if key in ("style_encoder", "predictor_encoder"):
-                payload = _convert_spectral_norm_keys(payload)
-            missing, unexpected = model[key].load_state_dict(payload, strict=False)
+            missing, unexpected = model[key].load_state_dict(params[key], strict=False)
             print(f"{key} loaded (missing={len(missing)} unexpected={len(unexpected)})")
     epoch = int(state.get("epoch", 0))
     iters = int(state.get("iters", 0))

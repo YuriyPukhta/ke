@@ -17,17 +17,18 @@ def _strip_module(state: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
 
 
 def _convert_spectral_norm_keys(state: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-    """Map old spectral_norm keys to parametrizations.spectral_norm API."""
+    """Map old weight_norm/spectral_norm keys to parametrizations API when possible."""
     out = {}
     for key, value in state.items():
         new_key = key
-        # Legacy torch.nn.utils.spectral_norm → parametrizations.spectral_norm
-        if key.endswith(".weight_orig") or ".weight_orig" in key:
-            new_key = key.replace(".weight_orig", ".parametrizations.weight.original")
+        # Common legacy patterns → parametrizations
+        if ".weight_orig" in key:
+            new_key = key.replace(".weight_orig", ".parametrizations.weight.original0")
         elif key.endswith(".weight_u"):
-            new_key = key[: -len(".weight_u")] + ".parametrizations.weight.0._u"
+            # drop u/v for spectral_norm; parametrizations recompute
+            continue
         elif key.endswith(".weight_v"):
-            new_key = key[: -len(".weight_v")] + ".parametrizations.weight.0._v"
+            continue
         out[new_key] = value
     return out
 

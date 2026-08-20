@@ -49,6 +49,7 @@ def apply_phase(model: dict, phase: str) -> None:
         unfreeze(
             model,
             [
+                "bert",
                 "bert_encoder",
                 "predictor",
                 "predictor_encoder",
@@ -59,7 +60,6 @@ def apply_phase(model: dict, phase: str) -> None:
                 "wd",
             ],
         )
-        set_requires_grad(model["bert"], False)
         set_requires_grad(model["text_encoder"], False)
         set_requires_grad(model["text_aligner"], False)
         set_requires_grad(model["pitch_extractor"], False)

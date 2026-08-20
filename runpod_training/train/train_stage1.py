@@ -28,7 +28,7 @@ from runpod_training.train.checkpointing import (
     update_latest_pointer,
 )
 from runpod_training.train.freeze import apply_phase, trainable_param_count
-from runpod_training.train.logging_utils import RunLogger, configure_run_logging
+from runpod_training.train.logging_utils import RunLogger
 from runpod_training.train.model_factory import (
     build_training_model,
     load_kokoro_base,
@@ -38,6 +38,7 @@ from runpod_training.train.model_factory import (
 from runpod_training.train.schedulers import build_warmup_cosine_scheduler, set_group_lr
 
 logger = logging.getLogger("runpod_training.stage1")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 
 def length_to_mask(lengths):
@@ -69,7 +70,6 @@ def run_stage1(config: dict, args: argparse.Namespace) -> None:
     from utils import log_norm, maximum_path, mask_from_lens
 
     layout = ensure_volume(Path(config.get("run_root", "/workspace/kokoro-run")))
-    configure_run_logging(layout["root"], "stage1")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     stage_cfg = config["stage1"]
     data_cfg = config["data_params"]
@@ -116,11 +116,6 @@ def run_stage1(config: dict, args: argparse.Namespace) -> None:
     start_epoch = 0
     iters = 0
 
-    resume_path = resolve_resume(args.resume, layout["state"], "stage1")
-    if resume_path:
-        start_epoch, iters, _ = load_checkpoint(resume_path, model, load_optimizer=False)
-        logger.info("resumed stage1 from %s @ epoch=%s iters=%s", resume_path, start_epoch, iters)
-
     warmup_epochs = int(stage_cfg.get("warmup_epochs", 1))
     max_warmup = int(stage_cfg.get("warmup_epochs_max", 2))
     acoustic_epochs = int(stage_cfg.get("acoustic_epochs", 9))
@@ -138,6 +133,21 @@ def run_stage1(config: dict, args: argparse.Namespace) -> None:
 
     n_down = model["text_aligner"].n_down
     align_ok = False
+
+    resume_path = resolve_resume(args.resume, layout["state"], "stage1")
+    if resume_path:
+        start_epoch, iters, _ = load_checkpoint(resume_path, model, load_optimizer=False)
+        # If we already finished the planned warmup epochs, do not re-enter warmup
+        # just because align_ok resets on process restart.
+        if start_epoch >= warmup_epochs:
+            align_ok = True
+        logger.info(
+            "resumed stage1 from %s @ epoch=%s iters=%s align_ok=%s",
+            resume_path,
+            start_epoch,
+            iters,
+            align_ok,
+        )
 
     for epoch in range(start_epoch, total_epochs):
         phase = "aligner_warmup" if (epoch < warmup_epochs or (epoch < max_warmup and not align_ok)) else "stage1"
@@ -210,25 +220,29 @@ def run_stage1(config: dict, args: argparse.Namespace) -> None:
                 t_en = model["text_encoder"](texts, input_lengths, text_mask)
                 asr = t_en @ (s2s_attn if bool(random.getrandbits(1)) else s2s_attn_mono)
 
-                mel_len = min([int(mel_input_length.min().item() / 2 - 1), max_len // 2])
+                # Half-rate crop length for ASR/text features; mel/wave use *2 (StyleTTS2).
+                mel_len = min(int(mel_input_length.min().item() / 2 - 1), max_len // 2)
                 mel_len = mel_len // 2 * 2
-                if mel_len < 32:
+                if mel_len < 40 or int(mel_input_length.min().item() / 2 - 1) < mel_len:
                     continue
                 en = []
                 gt = []
                 wav_crops = []
                 for bib in range(len(mel_input_length)):
-                    mel_length = int(mel_input_length[bib].item())
-                    random_start = np.random.randint(0, max(1, mel_length - mel_len))
+                    mel_length = int(mel_input_length[bib].item() / 2)
+                    random_start = np.random.randint(0, mel_length - mel_len)
                     en.append(asr[bib, :, random_start : random_start + mel_len])
-                    gt.append(mels[bib, :, random_start : random_start + mel_len])
+                    gt.append(mels[bib, :, (random_start * 2) : ((random_start + mel_len) * 2)])
                     y = waves[bib]
-                    # cache-faithful wave indexing (no 5000 pad): hop 300
-                    start_wav = random_start * 300
-                    end_wav = (random_start + mel_len) * 300
+                    # hop 300 on full-rate mel frames
+                    start_wav = (random_start * 2) * 300
+                    end_wav = ((random_start + mel_len) * 2) * 300
                     wav_crops.append(y[start_wav:end_wav])
                 en = torch.stack(en)
                 gt = torch.stack(gt)
+                # style_encoder needs enough mel frames for 5x5 conv stack
+                if gt.size(-1) < 80:
+                    continue
                 with torch.no_grad():
                     F0_real, _, _ = model["pitch_extractor"](gt.unsqueeze(1))
                     real_norm = log_norm(gt.unsqueeze(1)).squeeze(1)

@@ -9,27 +9,13 @@ export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
 
 CONFIG="${CONFIG:-${PKG}/configs/config_libritts_a40.yml}"
 RUN_ROOT="${RUN_ROOT:-/workspace/kokoro-run}"
-# Prefer assets layout if present (this volume), else classic path
-if [[ -z "${DATA_ROOT:-}" ]]; then
-  if [[ -d /workspace/kokoro_assets/data/LibriTTS_R ]]; then
-    DATA_ROOT=/workspace/kokoro_assets/data/LibriTTS_R
-  else
-    DATA_ROOT=/workspace/data/LibriTTS_R
-  fi
-fi
+DATA_ROOT="${DATA_ROOT:-/workspace/data/LibriTTS_R}"
 RESUME="${RESUME:-}"
 SKIP_INDEX="${SKIP_INDEX:-1}"   # indexes already in payload by default
 SKIP_CONVERT="${SKIP_CONVERT:-0}"
 STAGE="${STAGE:-all}"  # all|index|stage1|stage2|export
 
-mkdir -p "${RUN_ROOT}"/{checkpoints/stage1,checkpoints/stage2,logs/tensorboard,logs/console,metrics,samples,exports/kmodel,exports/voicepacks,configs,state,indexes,weights,cache}
-
-# Model / hub caches on volume (survive pod recreate)
-export HF_HOME="${HF_HOME:-${RUN_ROOT}/cache/huggingface}"
-export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${HF_HOME}/transformers}"
-export TORCH_HOME="${TORCH_HOME:-${RUN_ROOT}/cache/torch}"
-export XDG_CACHE_HOME="${XDG_CACHE_HOME:-${RUN_ROOT}/cache/xdg}"
-mkdir -p "${HF_HOME}" "${TRANSFORMERS_CACHE}" "${TORCH_HOME}" "${XDG_CACHE_HOME}"
+mkdir -p "${RUN_ROOT}"/{checkpoints/stage1,checkpoints/stage2,logs/tensorboard,metrics,samples,exports/kmodel,exports/voicepacks,configs,state,indexes,weights}
 
 # Persist runtime config and rewrite data roots for this machine
 python - <<PY
@@ -81,11 +67,10 @@ if [[ "${SKIP_INDEX}" != "1" && ( "${STAGE}" == "all" || "${STAGE}" == "index" )
     --min-align-score "${MIN_ALIGN_SCORE:-0.25}"
 fi
 
-# TensorBoard in background — process log on volume, not /tmp
+# TensorBoard in background
 if command -v tensorboard >/dev/null 2>&1; then
   echo "==> TensorBoard on :6006"
-  tensorboard --logdir "${RUN_ROOT}/logs/tensorboard" --host 0.0.0.0 --port 6006 \
-    >"${RUN_ROOT}/logs/console/tensorboard.log" 2>&1 &
+  tensorboard --logdir "${RUN_ROOT}/logs/tensorboard" --host 0.0.0.0 --port 6006 >/tmp/tensorboard.log 2>&1 &
 fi
 
 RESUME_ARGS=()
@@ -95,14 +80,12 @@ fi
 
 if [[ "${STAGE}" == "all" || "${STAGE}" == "stage1" ]]; then
   echo "==> Stage 1"
-  python -m runpod_training.train.train_stage1 --config "${RUN_ROOT}/configs/runtime.yml" "${RESUME_ARGS[@]+"${RESUME_ARGS[@]}"}" \
-    2>&1 | tee -a "${RUN_ROOT}/logs/console/stage1_launch.log"
+  python -m runpod_training.train.train_stage1 --config "${RUN_ROOT}/configs/runtime.yml" "${RESUME_ARGS[@]+"${RESUME_ARGS[@]}"}"
 fi
 
 if [[ "${STAGE}" == "all" || "${STAGE}" == "stage2" ]]; then
   echo "==> Stage 2"
-  python -m runpod_training.train.train_stage2 --config "${RUN_ROOT}/configs/runtime.yml" --resume "${RESUME:-auto}" \
-    2>&1 | tee -a "${RUN_ROOT}/logs/console/stage2_launch.log"
+  python -m runpod_training.train.train_stage2 --config "${RUN_ROOT}/configs/runtime.yml" --resume "${RESUME:-auto}"
 fi
 
 if [[ "${STAGE}" == "all" || "${STAGE}" == "export" ]]; then

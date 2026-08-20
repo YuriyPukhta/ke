@@ -11,28 +11,41 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
 
-
-def configure_run_logging(run_root: Path | str, stage: str) -> Path:
-    """Console + volume file handlers so pod disk loss does not wipe train logs."""
-    console_dir = Path(run_root) / "logs" / "console"
-    console_dir.mkdir(parents=True, exist_ok=True)
-    log_path = console_dir / f"{stage}.log"
-    root = logging.getLogger()
-    root.setLevel(logging.INFO)
-    # Avoid duplicate handlers on resume / re-entry
-    for h in list(root.handlers):
-        root.removeHandler(h)
-    fmt = logging.Formatter(_LOG_FORMAT)
-    sh = logging.StreamHandler()
-    sh.setFormatter(fmt)
-    fh = logging.FileHandler(log_path, encoding="utf-8")
-    fh.setFormatter(fmt)
-    root.addHandler(sh)
-    root.addHandler(fh)
-    logging.getLogger("runpod_training").info("console log → %s", log_path)
-    return log_path
+def _append_jsonl(path: Path, row: dict[str, Any], retries: int = 3) -> None:
+    """Append one JSON line; tolerate transient network-volume I/O errors."""
+    line = json.dumps(row) + "\n"
+    last_exc: Exception | None = None
+    for attempt in range(retries):
+        try:
+            with path.open("a", encoding="utf-8") as handle:
+                handle.write(line)
+                handle.flush()
+            return
+        except OSError as exc:
+            last_exc = exc
+            logger.warning(
+                "jsonl write failed (%s) attempt %s/%s: %s",
+                path.name,
+                attempt + 1,
+                retries,
+                exc,
+            )
+            time.sleep(0.5 * (attempt + 1))
+    # Last resort: write beside the original so training can continue.
+    fallback = path.with_suffix(path.suffix + ".fallback")
+    try:
+        with fallback.open("a", encoding="utf-8") as handle:
+            handle.write(line)
+            handle.flush()
+        logger.error(
+            "jsonl write to %s failed after retries; appended to %s (%s)",
+            path,
+            fallback.name,
+            last_exc,
+        )
+    except OSError as exc:
+        logger.error("jsonl write completely failed for %s: %s / fallback: %s", path, last_exc, exc)
 
 
 class RunLogger:
@@ -86,30 +99,40 @@ class RunLogger:
         row = {"step": step, "time": time.time(), **metrics}
         if lr:
             row.update({f"lr/{k}": v for k, v in lr.items()})
-        with self.train_jsonl.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(row) + "\n")
+        _append_jsonl(self.train_jsonl, row)
         if self._writer is not None:
-            for k, v in metrics.items():
-                self._writer.add_scalar(f"train/{k}", v, step)
-            if lr:
-                for k, v in lr.items():
-                    self._writer.add_scalar(f"lr/{k}", v, step)
+            try:
+                for k, v in metrics.items():
+                    self._writer.add_scalar(f"train/{k}", v, step)
+                if lr:
+                    for k, v in lr.items():
+                        self._writer.add_scalar(f"lr/{k}", v, step)
+            except Exception as exc:
+                logger.warning("TensorBoard train log failed: %s", exc)
         if self._wandb is not None:
-            payload = {f"train/{k}": v for k, v in metrics.items()}
-            if lr:
-                payload.update({f"lr/{k}": v for k, v in lr.items()})
-            payload["step"] = step
-            self._wandb.log(payload, step=step)
+            try:
+                payload = {f"train/{k}": v for k, v in metrics.items()}
+                if lr:
+                    payload.update({f"lr/{k}": v for k, v in lr.items()})
+                payload["step"] = step
+                self._wandb.log(payload, step=step)
+            except Exception as exc:
+                logger.warning("W&B train log failed: %s", exc)
 
     def log_val(self, step: int, metrics: dict[str, float]) -> None:
         row = {"step": step, "time": time.time(), **metrics}
-        with self.val_jsonl.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(row) + "\n")
+        _append_jsonl(self.val_jsonl, row)
         if self._writer is not None:
-            for k, v in metrics.items():
-                self._writer.add_scalar(f"val/{k}", v, step)
+            try:
+                for k, v in metrics.items():
+                    self._writer.add_scalar(f"val/{k}", v, step)
+            except Exception as exc:
+                logger.warning("TensorBoard val log failed: %s", exc)
         if self._wandb is not None:
-            self._wandb.log({f"val/{k}": v for k, v in metrics.items()}, step=step)
+            try:
+                self._wandb.log({f"val/{k}": v for k, v in metrics.items()}, step=step)
+            except Exception as exc:
+                logger.warning("W&B val log failed: %s", exc)
 
     def log_audio(self, tag: str, audio, step: int, sample_rate: int = 24000) -> None:
         if self._writer is not None:
@@ -129,7 +152,10 @@ class RunLogger:
 
     def log_summary(self, payload: dict[str, Any]) -> None:
         payload = {**payload, "elapsed_sec": time.time() - self._t0}
-        self.summary_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        try:
+            self.summary_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        except OSError as exc:
+            logger.error("summary write failed: %s", exc)
 
     @property
     def wandb_id(self) -> str | None:
@@ -139,8 +165,11 @@ class RunLogger:
 
     def close(self) -> None:
         if self._writer is not None:
-            self._writer.flush()
-            self._writer.close()
+            try:
+                self._writer.flush()
+                self._writer.close()
+            except Exception:
+                pass
         if self._wandb is not None:
             try:
                 self._wandb.finish()
